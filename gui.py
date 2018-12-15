@@ -4,9 +4,10 @@ import itertools
 from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtSvg import QGraphicsSvgItem
 from functools import partial
-from pyjones.opticalelements import HalfWavePlate, PolarizerHorizontal
-from pyjones.polarizations import LinearVertical
-
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from pyjones.opticalelements import HalfWavePlate, QuarterWavePlate
+from pyjones.polarizations import LinearVertical, get_Poincare_sphere
 random.random()
 gridSize = 10
 
@@ -40,6 +41,7 @@ class OpticalElement(QGraphicsSvgItem):
 
 class Beam(QtWidgets.QGraphicsPathItem):
     def __init__(self):
+        self.mpl = get_Poincare_sphere()
         self.alpha = 100
         self.optical_elements = []
         self.path = QtGui.QPainterPath()
@@ -51,19 +53,38 @@ class Beam(QtWidgets.QGraphicsPathItem):
         super().__init__(self.path)
         self.setBrush(QtGui.QBrush(QtGui.QColor(255, 0, 0, alpha=self.alpha)))
         self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 0, alpha=self.alpha)))
-        self.polarization = LinearVertical()
+        self.input_polarization = LinearVertical()
+        self.output_polarization = LinearVertical()
 
     def update_elements(self):
         self.optical_elements = sorted(self.collidingItems(), key=lambda x: x.pos().x())
-        #output_polarization = reduce(lambda x,y:x*y, )
+        self.output_polarization = self.input_polarization
+        for ele in self.optical_elements:
+            self.output_polarization = ele.element*self.output_polarization
+        print(self.output_polarization)
 
 
-class MyView(QtWidgets.QGraphicsView):
+class PoincareSphere(FigureCanvas):
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        self.compute_initial_figure()
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+        FigureCanvas.setSizePolicy(self,
+                                   QtWidgets.QSizePolicy.Expanding,
+                                   QtWidgets.QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+
+    def compute_initial_figure(self):
+        import numpy as np
+        t = np.arange(0.0, 3.0, 0.01)
+        s = np.sin(2*np.pi*t)
+        self.axes.plot(t, s)
+
+class DrawingView(QtWidgets.QGraphicsView):
     def __init__(self):
         QtWidgets.QGraphicsView.__init__(self)
-
-        # self.setGeometry(QtCore.QRect(100, 100, 600, 250))
-
         self.scene = QtWidgets.QGraphicsScene(self)
         self.scene.setSceneRect(QtCore.QRectF(0, 0, 500, 500))
         self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
@@ -77,23 +98,16 @@ class MyView(QtWidgets.QGraphicsView):
         self.beam = Beam()
         self.scene.addItem(self.beam)
 
-        # self.beamsplitter = OpticalElement('l2.svg', self.viewport(), self.beam, PolarizerHorizontal())
-        # self.beamsplitter.setScale(0.6)
-        # self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
-        # self.scene.addItem(self.beamsplitter)
+        self.beamsplitter = OpticalElement('l2.svg', self.viewport(), self.beam, HalfWavePlate(0))
+        self.beamsplitter.setScale(0.6)
+        self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
+        self.scene.addItem(self.beamsplitter)
 
-        for i in range(3):
-            self.beamsplitter = OpticalElement('l2.svg', self.viewport(), self.beam, PolarizerHorizontal())
-            self.beamsplitter.setScale(0.6)
-            self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
-            self.scene.addItem(self.beamsplitter)
-            self.beamsplitter = OpticalElement('l4.svg', self.viewport(), self.beam, HalfWavePlate(45))
-            self.beamsplitter.setScale(0.6)
-            self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
-            self.scene.addItem(self.beamsplitter)
+        self.beamsplitter = OpticalElement('l4.svg', self.viewport(), self.beam, QuarterWavePlate(0))
+        self.beamsplitter.setScale(0.6)
+        self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
+        self.scene.addItem(self.beamsplitter)
 
-            # self.beam = BeamPath(self.scene)
-            # self.beam.draw_beam()
 
     def drawBackground(self, painter, rect):
         rect = rect.normalized()
@@ -122,6 +136,7 @@ class MyView(QtWidgets.QGraphicsView):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    view = MyView()
+    view = DrawingView()
     view.show()
     sys.exit(app.exec_())
+
