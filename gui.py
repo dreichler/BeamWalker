@@ -1,8 +1,8 @@
 import sys
 import random
 import itertools
-from PyQt4 import QtGui, QtCore
-from PyQt4.QtSvg import QGraphicsSvgItem
+from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5.QtSvg import QGraphicsSvgItem
 from functools import partial
 from pyjones.opticalelements import HalfWavePlate, PolarizerHorizontal
 from pyjones.polarizations import LinearVertical
@@ -15,7 +15,7 @@ class OpticalElement(QGraphicsSvgItem):
     def __init__(self, path, parent, beam, element):
         super().__init__(path)
         self.parent = parent
-        self.setFlag(QtGui.QGraphicsItem.ItemIsMovable)
+        self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
         self.beam = beam
         self.element = element
 
@@ -38,7 +38,7 @@ class OpticalElement(QGraphicsSvgItem):
         self.beam.update_elements()
 
 
-class Beam(QtGui.QGraphicsPathItem):
+class Beam(QtWidgets.QGraphicsPathItem):
     def __init__(self):
         self.alpha = 100
         self.optical_elements = []
@@ -58,32 +58,37 @@ class Beam(QtGui.QGraphicsPathItem):
         #output_polarization = reduce(lambda x,y:x*y, )
 
 
-class MyView(QtGui.QGraphicsView):
+class MyView(QtWidgets.QGraphicsView):
     def __init__(self):
-        QtGui.QGraphicsView.__init__(self)
+        QtWidgets.QGraphicsView.__init__(self)
 
         # self.setGeometry(QtCore.QRect(100, 100, 600, 250))
 
-        self.scene = QtGui.QGraphicsScene(self)
+        self.scene = QtWidgets.QGraphicsScene(self)
         self.scene.setSceneRect(QtCore.QRectF(0, 0, 500, 500))
-        self.setTransformationAnchor(QtGui.QGraphicsView.AnchorUnderMouse)
-        self.setResizeAnchor(QtGui.QGraphicsView.AnchorUnderMouse)
+        self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
         self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setDragMode(QtGui.QGraphicsView.NoDrag)
-        self.setFrameShape(QtGui.QFrame.NoFrame)
+        self.setDragMode(QtWidgets.QGraphicsView.NoDrag)
+        self.setFrameShape(QtWidgets.QFrame.NoFrame)
 
         self.setScene(self.scene)
         self.beam = Beam()
         self.scene.addItem(self.beam)
 
+        # self.beamsplitter = OpticalElement('l2.svg', self.viewport(), self.beam, PolarizerHorizontal())
+        # self.beamsplitter.setScale(0.6)
+        # self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
+        # self.scene.addItem(self.beamsplitter)
+
         for i in range(3):
-            self.beamsplitter = OpticalElement('symbol_wifi.svg', self.viewport(), self.beam, PolarizerHorizontal())
-            self.beamsplitter.setScale(0.1)
+            self.beamsplitter = OpticalElement('l2.svg', self.viewport(), self.beam, PolarizerHorizontal())
+            self.beamsplitter.setScale(0.6)
             self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
             self.scene.addItem(self.beamsplitter)
-            self.beamsplitter = OpticalElement('symbol_home.svg', self.viewport(), self.beam, HalfWavePlate(45))
-            self.beamsplitter.setScale(0.1)
+            self.beamsplitter = OpticalElement('l4.svg', self.viewport(), self.beam, HalfWavePlate(45))
+            self.beamsplitter.setScale(0.6)
             self.beamsplitter.setPos(random.uniform(100, 400), random.uniform(100, 400))
             self.scene.addItem(self.beamsplitter)
 
@@ -103,7 +108,7 @@ class MyView(QtGui.QGraphicsView):
 
         oldPos = self.mapToScene(event.pos())
 
-        if event.delta() > 0:
+        if event.angleDelta().y() > 0:
             zoomFactor = zoomInFactor
         else:
             zoomFactor = zoomOutFactor
@@ -116,7 +121,7 @@ class MyView(QtGui.QGraphicsView):
 
 
 if __name__ == '__main__':
-    app = QtGui.QApplication(sys.argv)
+    app = QtWidgets.QApplication(sys.argv)
     view = MyView()
     view.show()
     sys.exit(app.exec_())
